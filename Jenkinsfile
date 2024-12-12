@@ -1,78 +1,69 @@
 pipeline {
-    agent any  // Run on any available Jenkins agent
-
-    tools {
-        maven 'Maven 3.6.3'  // Specify Maven version (make sure Maven is installed and configured in Jenkins)
-        jdk 'JDK 11'         // Specify JDK version (make sure JDK is configured in Jenkins)
-    }
+    agent any
 
     environment {
-        MVN_HOME = tool name: 'Maven 3.6.3', type: 'Tool'  // Set Maven home path
+        GIT_CREDENTIALS_ID = 'my_github_key'
     }
 
     stages {
-        // Stage 1: Checkout Code from GitHub (or any other repository)
         stage('Checkout') {
             steps {
-                checkout scm  // Checkout code from the repository
+                echo 'Git checkout Started...'
+                script {
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: 'main']],
+                        doGenerateSubmoduleConfigurations: false,
+                        extensions: [],
+                        submoduleCfg: [],
+                        userRemoteConfigs: [[
+                            credentialsId: env.GIT_CREDENTIALS_ID,
+                            url: 'https://github.com/pmojumder/OrangeHRM_2111.git'
+                        ]]
+                    ])
+                }
+                echo 'Git checkout Completed...'
             }
         }
 
-        // Stage 2: Build the Project
         stage('Build') {
             steps {
-                script {
-                    // Clean and build the project with Maven, skipping the tests to save time
-                    sh "${MVN_HOME}/bin/mvn clean install -DskipTests"
-                }
+                bat 'mvn clean compile'
             }
         }
 
-        // Stage 3: Run TestNG Tests
-        stage('Run TestNG Tests') {
+        stage('Test') {
             steps {
-                script {
-                    // Run the tests using Maven (runs TestNG tests as per the pom.xml configuration)
-                    sh "${MVN_HOME}/bin/mvn test"
-                }
+                echo 'Test Execution Started...'
+                bat 'mvn test'
+                echo 'Test Execution Completed...'
             }
         }
 
-        // Stage 4: Archive TestNG Emailable Report
-        stage('Archive TestNG Emailable Report') {
+        stage('Reports') {
             steps {
-                // Archive the TestNG Emailable HTML report (usually found in target/surefire-reports)
-                archiveArtifacts allowEmptyArchive: true, artifacts: 'target/surefire-reports/emailable-report.html', onlyIfSuccessful: true
-            }
-        }
-
-        // Stage 5: Publish TestNG Emailable Report
-        stage('Publish TestNG Report') {
-            steps {
-                // Publish the TestNG HTML report (if using the Maven Surefire Plugin, the reports are in target/surefire-reports)
-                publishHTML(target: [
-                    reportName: 'TestNG Emailable Report',          // Name of the report
-                    reportDir: 'target/surefire-reports',           // Directory where Surefire stores reports
-                    reportFiles: 'emailable-report.html',          // The Emailable HTML report file
-                    keepAll: true
-                ])
+                echo 'Publishing test reports...'
+                junit 'target/surefire-reports/*.xml'
+                archiveArtifacts artifacts: 'target/surefire-reports/**', allowEmptyArchive: true
             }
         }
     }
 
     post {
         always {
-            // Clean workspace after the build to free up space
-            cleanWs()
+            echo 'Pipeline execution finished.'
         }
-
         success {
-            echo 'Build and TestNG tests completed successfully!'
+            echo 'Pipeline succeeded.'
         }
-
         failure {
-            echo 'Build or tests failed!'
+            echo 'Pipeline failed.'
+            emailext (
+                subject: "Jenkins Job Failed: ${env.JOB_NAME}",
+                body: """<p>Jenkins job <b>${env.JOB_NAME}</b> has failed.</p>
+                         <p>Build URL: <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>""",
+                to: 'plabani52@gmail.com,ruma.mojumder@gmail.com'
+            )
         }
     }
 }
- 
