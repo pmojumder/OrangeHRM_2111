@@ -16,7 +16,7 @@ public class VerifyTest {
 	{
 		
 	
-	System.setProperty("webdriver.chrome.driver", "C:\\Users\\Plabani\\eclipse-workspace\\OrangeHRM_2111\\src\\test\\resources\\chromedriver.exe");
+	System.setProperty("webdriver.chrome.driver", "C:\\Users\\Plabani\\Downloads\\chromedriver-win64 (4)\\chromedriver-win64\\chromedriver.exe");
 	WebDriver driver=new ChromeDriver();//downcasting
     DriverUtilis.getDriver().get("https://opensource-demo.orangehrmlive.com/web/index.php/auth/login");
     LoginPage lp=new LoginPage();
